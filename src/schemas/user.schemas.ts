@@ -24,11 +24,28 @@ const placeField = (label: string, min = 2, max = 100) =>
       `${label} contains invalid characters`,
     );
 
-/** E.164-compatible phone: optional +, then digits/spaces/dashes/parens */
+/** E.164-compatible phone: must start with + and country code, followed by digits only.
+ *  Examples: +1 555 000 0000, +234 801 234 5678, +44 20 7946 0958
+ *  This validates phone format before backend validation with libphonenumber-js
+ */
 const phoneField = z
   .string()
   .trim()
-  .regex(/^\+?[\d\s\-(). ]{7,20}$/, 'Enter a valid phone number (e.g. +1 555 000 0000)');
+  .refine(
+    (val) => {
+      // Must start with +
+      if (!val.startsWith('+')) return false;
+      // Remove + and all non-digit characters
+      const digitsOnly = val.slice(1).replace(/\D/g, '');
+      // Must have between 10 and 15 digits (E.164 standard)
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) return false;
+      // Cannot have invalid character combinations (e.g., "----" or "()" with no digits)
+      const cleaned = val.replace(/[\s\-().]/g, '');
+      const hasInvalidChars = cleaned.match(/[^+\d]/);
+      return !hasInvalidChars;
+    },
+    'Enter a valid international phone number (e.g., +1 555 000 0000 or +234 801 234 5678)',
+  );
 
 /** YYYY-MM-DD string that is a valid past date */
 const dobField = z
