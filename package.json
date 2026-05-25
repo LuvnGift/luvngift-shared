@@ -1,6 +1,6 @@
 {
   "name": "@luvngift/shared",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Shared types, schemas, and utilities for Luvngift",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

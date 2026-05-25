@@ -46,3 +46,8 @@ export const searchPaginationSchema = paginationSchema.extend({
     .optional(),
   sort: z.enum(['asc', 'desc']).optional().default('desc'),
 });
+
+export type IdParam = z.infer<typeof idParamSchema>;
+export type SlugParam = z.infer<typeof slugParamSchema>;
+export type PaginationInput = z.infer<typeof paginationSchema>;
+export type SearchPaginationInput = z.infer<typeof searchPaginationSchema>;
