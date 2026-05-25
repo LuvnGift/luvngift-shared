@@ -82,11 +82,6 @@ export const assignVendorSchema = z.object({
   vendorId: z.string().cuid(),
 });
 
-export const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
-});
-
 export const customOrderSchema = z.object({
   occasionType: z
     .string()
@@ -113,5 +108,4 @@ export const customOrderSchema = z.object({
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
-export type PaginationInput = z.infer<typeof paginationSchema>;
 export type CustomOrderInput = z.infer<typeof customOrderSchema>;
