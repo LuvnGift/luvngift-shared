@@ -100,6 +100,7 @@ export const customOrderSchema = z.object({
     .max(1000, 'Description must be at most 1000 characters'),
   recipientName: nameField('Recipient name'),
   recipientPhone: phoneField,
+  deliveryStreet: streetField.optional(),
   deliveryCity: placeField('Delivery city', 2, 100),
   deliveryState: placeField('Delivery state', 2, 50),
   personalMessage: z.string().trim().max(500, 'Message must be at most 500 characters').optional(),
