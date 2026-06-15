@@ -20,8 +20,16 @@ export interface Bundle {
   images: string[];
   isActive: boolean;
   items: BundleItem[];
+  // SEO content (optional) — rich copy rendered on the public bundle page.
+  seoBody?: string | null;
+  faqs?: Faq[] | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Faq {
+  question: string;
+  answer: string;
 }
 
 export interface Occasion {
@@ -32,6 +40,10 @@ export interface Occasion {
   image?: string;
   isActive: boolean;
   bundles?: Bundle[];
+  // SEO content (optional) — rich copy rendered on the public occasion page.
+  seoIntro?: string | null;
+  highlights?: string[];
+  faqs?: Faq[] | null;
   createdAt: Date;
   updatedAt: Date;
 }

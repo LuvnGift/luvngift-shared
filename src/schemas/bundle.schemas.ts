@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
+export const faqSchema = z.object({
+  question: z.string().trim().min(3, 'Question is too short').max(300),
+  answer: z.string().trim().min(3, 'Answer is too short').max(1500),
+});
+
 export const createBundleSchema = z.object({
-  occasionId: z.string().cuid(),
+  occasionId: z.string().min(1, 'Occasion is required'),
   name: z
     .string()
     .trim()
@@ -29,6 +34,9 @@ export const createBundleSchema = z.object({
     description: z.string().trim().max(500).optional(),
     quantity: z.number().int().positive('Quantity must be a positive integer'),
   })).min(1, 'At least one item is required'),
+  // SEO content (optional) — rich copy rendered on the public bundle page.
+  seoBody: z.string().trim().max(5000).optional(),
+  faqs: z.array(faqSchema).max(20).optional(),
 });
 
 export const updateBundleSchema = createBundleSchema.partial();
@@ -49,6 +57,10 @@ export const createOccasionSchema = z.object({
     .min(10, 'Description must be at least 10 characters')
     .max(1000),
   image: z.string().url('Must be a valid URL').optional(),
+  // SEO content (optional) — rich copy rendered on the public occasion page.
+  seoIntro: z.string().trim().max(5000).optional(),
+  highlights: z.array(z.string().trim().min(2).max(200)).max(12).optional(),
+  faqs: z.array(faqSchema).max(20).optional(),
 });
 
 export const updateOccasionSchema = createOccasionSchema.partial();
@@ -76,3 +88,4 @@ export const updateCustomItemSchema = createCustomItemSchema.partial();
 export type CreateBundleInput = z.infer<typeof createBundleSchema>;
 export type CreateOccasionInput = z.infer<typeof createOccasionSchema>;
 export type CreateCustomItemInput = z.infer<typeof createCustomItemSchema>;
+// Note: the `Faq` type is exported from ./types to avoid a duplicate export.
