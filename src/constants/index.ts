@@ -73,3 +73,12 @@ export const CACHE_TAGS = {
  * this only catches anything a purge misses.
  */
 export const CACHE_FALLBACK_SECONDS = 3600;
+
+/**
+ * The header the web server sends on its server-side API fetches (Vercel
+ * prerendering and ISR), carrying the secret the two already share for cache
+ * purges (REVALIDATE_SECRET, server-only on both sides). The API lets it skip
+ * the per-IP global rate limit, which one build exceeds on its own; every
+ * per-endpoint limiter still applies.
+ */
+export const TRUSTED_SERVER_HEADER = 'x-luvngift-server';
