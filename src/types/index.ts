@@ -5,3 +5,5 @@ export * from './bundle.types';
 export * from './chat.types';
 export * from './vendor.types';
 export * from './subscription.types';
+export * from './custom-order.types';
+export * from './pricing.types';

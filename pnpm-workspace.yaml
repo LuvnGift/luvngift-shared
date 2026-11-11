@@ -1,0 +1,8 @@
+# pnpm 10+ blocks dependency postinstall scripts unless they are listed here.
+#
+#   - esbuild — downloads its platform binary; Vitest will not run without it.
+#
+# Leaving this unanswered also makes `pnpm install` exit non-zero, which fails
+# any CI step that chains commands with `&&`.
+allowBuilds:
+  esbuild: true
