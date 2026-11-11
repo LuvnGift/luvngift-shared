@@ -7,11 +7,15 @@ export const getUserCurrency = (buyerCountry?: string | null): 'USD' | 'GBP' | '
   return 'USD';
 };
 
-const CURRENCY_CONFIG: Record<Currency, { symbol: string; locale: string; decimals: number }> = {
-  [Currency.CAD]: { symbol: 'CA$', locale: 'en-CA', decimals: 2 },
-  [Currency.USD]: { symbol: '$', locale: 'en-US', decimals: 2 },
-  [Currency.GBP]: { symbol: '£', locale: 'en-GB', decimals: 2 },
-  [Currency.NGN]: { symbol: '₦', locale: 'en-NG', decimals: 2 },
+/**
+ * One unambiguous symbol per currency. Buyers are in Canada, the US and the
+ * UK, so a bare "$" could be either dollar: every price says CA$ or US$.
+ */
+const SYMBOLS: Record<Currency, string> = {
+  [Currency.CAD]: 'CA$',
+  [Currency.USD]: 'US$',
+  [Currency.GBP]: '£',
+  [Currency.NGN]: '₦',
 };
 
 /** Convert smallest unit (kobo/cents) to decimal amount */
@@ -20,16 +24,23 @@ export const fromSmallestUnit = (amount: number): number => amount / 100;
 /** Convert decimal amount to smallest unit (kobo/cents) */
 export const toSmallestUnit = (amount: number): number => Math.round(amount * 100);
 
-/** Format an amount (in smallest unit) to a display string */
-export const formatCurrency = (amountInSmallestUnit: number, currency: Currency): string => {
-  const { locale } = CURRENCY_CONFIG[currency];
-  const amount = fromSmallestUnit(amountInSmallestUnit);
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
+/**
+ * "CA$1,234.50", "-US$5.00". Every price on the site, in the app and in email
+ * is written this way. Accepts a currency code as a string so a payload typed
+ * loosely needs no cast; an unknown code is written in front ("EUR 5.00").
+ */
+export const formatMoney = (amountInSmallestUnit: number, currency: Currency | string): string => {
+  const symbol = SYMBOLS[currency as Currency] ?? `${currency} `;
+  const digits = (Math.abs(amountInSmallestUnit) / 100).toLocaleString('en-GB', {
     minimumFractionDigits: 2,
-  }).format(amount);
+    maximumFractionDigits: 2,
+  });
+  return `${amountInSmallestUnit < 0 ? '-' : ''}${symbol}${digits}`;
 };
 
-export const getCurrencySymbol = (currency: Currency): string =>
-  CURRENCY_CONFIG[currency].symbol;
+/** The same as `formatMoney`, under its older name. */
+export const formatCurrency = (amountInSmallestUnit: number, currency: Currency | string): string =>
+  formatMoney(amountInSmallestUnit, currency);
+
+export const getCurrencySymbol = (currency: Currency | string): string =>
+  SYMBOLS[currency as Currency] ?? String(currency);

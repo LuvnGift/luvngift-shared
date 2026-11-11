@@ -37,7 +37,8 @@ const phoneField = z
   );
 
 /** Strong password: 8–100 chars, at least one uppercase, one lowercase, one digit */
-const passwordField = z
+/** The password rule for every form that sets one: register, reset and change. */
+export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
   .max(100, 'Password must be at most 100 characters')
@@ -71,7 +72,7 @@ export const registerSchema = z.object({
       'Username must start with a letter and can only contain letters, numbers, and underscores',
     ),
   email: z.string().trim().email('Enter a valid email address'),
-  password: passwordField,
+  password: passwordSchema,
   phone: phoneField.optional(),
   dateOfBirth: dobField,
 });
@@ -87,7 +88,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  password: passwordField,
+  password: passwordSchema,
 });
 
 export const verifyEmailSchema = z.object({
@@ -104,7 +105,7 @@ export const refreshTokenSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: passwordField,
+  newPassword: passwordSchema,
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

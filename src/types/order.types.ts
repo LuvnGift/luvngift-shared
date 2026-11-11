@@ -1,3 +1,4 @@
+import type { QuoteStatus } from './custom-order.types';
 import { Currency, OrderStatus } from './common.types';
 
 export interface OrderItem {
@@ -17,12 +18,23 @@ export interface OrderPayment {
   currency: string;
 }
 
+/**
+ * An order as the API returns it. A customer's reads go through
+ * PUBLIC_ORDER_SELECT in the API, so the admin-only fields below are absent
+ * from them; admin reads include them.
+ */
 export interface Order {
   id: string;
   userId: string;
   bundleId?: string;
+  addressId?: string | null;
+  /** Set when a subscription delivery made this order. */
+  subscriptionId?: string | null;
+  /** Admin reads only. */
   vendorId?: string;
   status: OrderStatus;
+  /** A custom gift request's negotiation stage; null on every other order. */
+  quoteStatus?: QuoteStatus | null;
   recipientName: string;
   recipientPhone: string;
   deliveryStreet: string;
@@ -37,9 +49,19 @@ export interface Order {
   total: number;
   currency: Currency;
   /** Exchange rate to CAD at the time the order was created (1.0 for CAD orders) */
-  cadExchangeRate: number;
+  cadExchangeRate?: number;
+  /** Admin reads only. */
   adminNotes?: string;
-  isFlagged: boolean;
+  /** Admin reads only. */
+  isFlagged?: boolean;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
+  /** Proof of delivery: the photo, when it was taken, and the vendor's note. */
+  deliveryProofUrl?: string | null;
+  deliveryProofAt?: string | null;
+  deliveryProofNote?: string | null;
+  /** When the recipient confirmed with the delivery code. */
+  recipientConfirmedAt?: string | null;
   invoiceUrl?: string;
   items: OrderItem[];
   payment?: OrderPayment;

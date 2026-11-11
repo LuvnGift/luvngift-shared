@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MIN_REDEEM } from '../rules/points';
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -24,8 +25,12 @@ const placeField = (label: string, min = 2, max = 100) =>
       `${label} contains invalid characters`,
     );
 
-/** E.164-compatible phone: optional +, then digits/spaces/dashes/parens */
-const phoneField = z
+/**
+ * E.164-compatible phone: optional +, then digits/spaces/dashes/parens. One
+ * rule everywhere a phone is entered: an edit endpoint once used a narrower
+ * one and refused the very number an order had been placed with.
+ */
+export const phoneSchema = z
   .string()
   .trim()
   .regex(/^\+?[\d\s\-(). ]{7,20}$/, 'Enter a valid phone number (e.g. +234 801 234 5678)');
@@ -63,14 +68,29 @@ export const createOrderSchema = z.object({
     quantity: z.number().int().positive(),
   })).optional(),
   recipientName: nameField('Recipient name'),
-  recipientPhone: phoneField,
+  recipientPhone: phoneSchema,
   deliveryAddress: deliveryAddressSchema,
   personalMessage: z.string().trim().max(500, 'Message must be at most 500 characters').optional(),
   specialInstructions: z.string().trim().max(500, 'Instructions must be at most 500 characters').optional(),
   preferredDeliveryDate: z.string().datetime().optional(),
   currency: z.enum(['CAD', 'USD', 'GBP']).optional(),
+  /** Points to spend on this order; spent only once it is paid. */
+  redeemPoints: z.number().int().min(MIN_REDEEM).max(1_000_000).optional(),
 }).refine(data => data.bundleId || (data.items && data.items.length > 0), {
   message: 'Order must include either a bundle or at least one custom item',
+});
+
+/** A customer correcting the recipient of an order not yet with a vendor. */
+export const updateRecipientSchema = z.object({
+  recipientName: z.string().trim().min(1, 'Recipient name is required'),
+  recipientPhone: phoneSchema,
+  deliveryAddress: z.object({
+    street: z.string().trim().min(5),
+    city: z.string().trim().min(2),
+    state: z.string().trim().min(2),
+    country: z.string().trim(),
+  }),
+  personalMessage: z.string().trim().max(500).optional(),
 });
 
 export const updateOrderStatusSchema = z.object({
@@ -99,7 +119,7 @@ export const customOrderSchema = z.object({
     .min(10, 'Please provide at least 10 characters of description')
     .max(1000, 'Description must be at most 1000 characters'),
   recipientName: nameField('Recipient name'),
-  recipientPhone: phoneField,
+  recipientPhone: phoneSchema,
   deliveryStreet: streetField.optional(),
   deliveryCity: placeField('Delivery city', 2, 100),
   deliveryState: placeField('Delivery state', 2, 50),
