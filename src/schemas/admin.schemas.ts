@@ -229,7 +229,6 @@ const feePercent = z.number().min(0).max(20);
 /** Admin → Settings → Subscription pricing. Every value sets the margin on every subscription. */
 export const subscriptionRulesSchema = z.object({
   minFillPercent: z.number().int().min(50).max(100),
-  vendorSharePercent: z.number().min(50).max(90),
   marginTolerancePoints: z.number().min(1).max(50),
   cardFeePercent: z.object({ USD: feePercent, CAD: feePercent, GBP: feePercent }),
   /** Points that take 1 unit of the buyer's currency off. */
