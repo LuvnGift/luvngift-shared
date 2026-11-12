@@ -7,3 +7,4 @@ export * from './vendor.types';
 export * from './subscription.types';
 export * from './custom-order.types';
 export * from './pricing.types';
+export * from './payout.types';
