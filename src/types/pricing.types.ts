@@ -48,7 +48,6 @@ export interface PriceLine {
 /** Admin → Settings → Subscription pricing, as stored. */
 export interface SubscriptionRules {
   minFillPercent: number;
-  vendorSharePercent: number;
   marginTolerancePoints: number;
   cardFeePercent: Record<PricedCurrency, number>;
   pointsPerCurrencyUnit: number;
