@@ -139,3 +139,53 @@ export const adjustmentListSchema = z.object({
   status: z.enum(['DUE', 'BATCHED', 'PAID', 'CANCELLED']).optional(),
   vendorId: z.string().cuid().optional(),
 });
+
+// ─── Reporting (phase 3) ─────────────────────────────────────────────────────
+
+/** A calendar month, `YYYY-MM`, read in Lagos time (where the bank statement is). */
+export const payoutMonthSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose a month (YYYY-MM)');
+
+export const FUNDING_SOURCE_CURRENCIES = ['CAD', 'USD', 'GBP'] as const;
+export type FundingSourceCurrency = (typeof FUNDING_SOURCE_CURRENCIES)[number];
+
+/**
+ * `POST /admin/payout-fundings`: money moved from abroad into the naira
+ * account partners are paid from. Both amounts are in minor units, so the
+ * rate (naira per unit) is exactly what the bank or FX provider gave.
+ */
+export const payoutFundingSchema = z.object({
+  fundedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter the date the naira arrived'),
+  amountNgn: z.number().int().positive('Enter the naira received').max(10_000_000_000_00),
+  sourceAmount: z.number().int().positive('Enter the amount sent').max(1_000_000_000_00),
+  sourceCurrency: z.enum(FUNDING_SOURCE_CURRENCIES),
+  provider: z.string().trim().min(2, 'Name the bank or FX provider').max(60),
+  reference: z.string().trim().max(100).optional(),
+  note: z.string().trim().max(PAYOUT_NOTE_MAX).optional(),
+});
+export type PayoutFundingInput = z.infer<typeof payoutFundingSchema>;
+
+/** `POST /admin/payout-fundings/:id/void`: a funding record is never edited, only voided. */
+export const payoutFundingVoidSchema = z.object({
+  reason: z.string().trim().min(PAYOUT_REASON_MIN, 'Say why this record is wrong').max(PAYOUT_NOTE_MAX),
+});
+
+/**
+ * `POST /admin/payout-reports/reconciliations`: what the bank statement says
+ * left the naira account for partner payments that month. The API computes
+ * the difference from its own records at that moment.
+ */
+export const payoutReconciliationSchema = z.object({
+  month: payoutMonthSchema,
+  bankOutflowNgn: z.number().int().min(0).max(10_000_000_000_00),
+  note: z.string().trim().max(PAYOUT_NOTE_MAX).optional(),
+});
+export type PayoutReconciliationInput = z.infer<typeof payoutReconciliationSchema>;
+
+export const payoutMonthQuerySchema = z.object({ month: payoutMonthSchema });
+
+export const payoutFundingListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

@@ -79,3 +79,28 @@ export const BATCH_EXCLUSION_LABELS: Record<BatchExclusion, string> = {
 export function payoutRef(id: string): string {
   return `LG-${id.slice(-8).toUpperCase()}`;
 }
+
+// ─── Reporting (phase 3) ─────────────────────────────────────────────────────
+
+/** Lagos is UTC+1 all year (no daylight saving). */
+const LAGOS_OFFSET_MS = 60 * 60 * 1000;
+
+/** The instants a `YYYY-MM` month starts and ends in Lagos time, as [start, end). */
+export function lagosMonthBounds(month: string): { start: Date; end: Date } {
+  const [y, m] = month.split('-').map(Number);
+  return {
+    start: new Date(Date.UTC(y, m - 1, 1) - LAGOS_OFFSET_MS),
+    end: new Date(Date.UTC(y, m, 1) - LAGOS_OFFSET_MS),
+  };
+}
+
+/** The month (`YYYY-MM`) an instant falls in, in Lagos time. */
+export function lagosMonthOf(at: Date): string {
+  const d = new Date(at.getTime() + LAGOS_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Naira received per 1 unit of the currency sent. Both amounts in minor units. */
+export function fundingRate(amountNgn: number, sourceAmount: number): number {
+  return sourceAmount > 0 ? amountNgn / sourceAmount : 0;
+}

@@ -134,3 +134,86 @@ export interface PartnerAdjustmentView {
   cancelledReason: string | null;
   createdAt: string;
 }
+
+// ─── Reporting (phase 3) ─────────────────────────────────────────────────────
+
+export interface PayoutFundingView {
+  id: string;
+  fundedOn: string;
+  amountNgn: number;
+  sourceAmount: number;
+  sourceCurrency: 'CAD' | 'USD' | 'GBP';
+  /** Naira per 1 unit of the source currency. */
+  rate: number;
+  provider: string;
+  reference: string | null;
+  note: string | null;
+  createdByEmail: string;
+  voidedAt: string | null;
+  voidedReason: string | null;
+  createdAt: string;
+}
+
+export interface PayoutReconciliationView {
+  id: string;
+  month: string;
+  recordedPaidNgn: number;
+  bankOutflowNgn: number;
+  /** bank minus recorded. Positive: more left the bank than we recorded. */
+  differenceNgn: number;
+  note: string | null;
+  reconciledByEmail: string;
+  createdAt: string;
+}
+
+/** One payment that left the naira account in the month: a batch transfer or a single payout. */
+export interface MonthlyPaymentLine {
+  kind: 'TRANSFER' | 'PAYOUT';
+  id: string;
+  ref: string;
+  paidAt: string;
+  vendorId: string;
+  vendorName: string;
+  bankName: string | null;
+  accountLast4: string | null;
+  reference: string | null;
+  amountNgn: number;
+}
+
+export interface MonthlyPayoutReport {
+  month: string;
+  payments: MonthlyPaymentLine[];
+  paidNgn: number;
+  byPartner: { vendorId: string; vendorName: string; paidNgn: number; count: number }[];
+  funding: { currency: 'CAD' | 'USD' | 'GBP'; sourceAmount: number; amountNgn: number; rate: number }[];
+  fundedNgn: number;
+  /** As of now, not as of the month end. */
+  outstanding: { dueNgn: number; batchedNgn: number; adjustmentsNetNgn: number };
+  reconciliations: PayoutReconciliationView[];
+}
+
+export interface PartnerPayoutSummary {
+  dueNgn: number;
+  batchedNgn: number;
+  adjustmentsNetNgn: number;
+  paidThisMonthNgn: number;
+  paidAllTimeNgn: number;
+  lastPaidAt: string | null;
+}
+
+/**
+ * An order's money in and out. `estimate` is in CAD (the reporting currency)
+ * and excludes card fees, which are not stored: it is a guide, not accounts.
+ */
+export interface OrderMoneyView {
+  moneyIn: { currency: string; totalMinor: number; refundedMinor: number; paymentStatus: string | null; cadRate: number };
+  moneyOut: { owedNgn: number; paidNgn: number; batchedNgn: number; dueNgn: number; adjustmentsNgn: number };
+  estimate: {
+    netInCadCents: number;
+    partnerCostCadCents: number;
+    marginCadCents: number;
+    /** Naira per CA$ from the latest CAD funding on or before the order. */
+    fundingRate: number;
+    fundingDate: string;
+  } | null;
+}

@@ -140,3 +140,38 @@ describe('phase 2 schemas', () => {
     expect(payoutRef('ckz1a2b3c0000qwertyuiop12')).toBe('LG-TYUIOP12');
   });
 });
+
+import { fundingRate, lagosMonthBounds, lagosMonthOf, payoutFundingSchema, payoutReconciliationSchema } from '../src';
+
+describe('Lagos months', () => {
+  it('a month starts and ends at Lagos midnight (UTC+1)', () => {
+    const { start, end } = lagosMonthBounds('2026-11');
+    expect(start.toISOString()).toBe('2026-10-31T23:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-11-30T23:00:00.000Z');
+  });
+  it('December rolls into January', () => {
+    expect(lagosMonthBounds('2026-12').end.toISOString()).toBe('2026-12-31T23:00:00.000Z');
+  });
+  it('an instant late on the last UTC day belongs to the next Lagos month', () => {
+    expect(lagosMonthOf(new Date('2026-11-30T23:30:00Z'))).toBe('2026-12');
+    expect(lagosMonthOf(new Date('2026-11-30T22:30:00Z'))).toBe('2026-11');
+  });
+});
+
+describe('funding', () => {
+  it('rate is naira per unit sent', () => {
+    expect(fundingRate(1_050_000_00, 1_000_00)).toBe(1050);
+    expect(fundingRate(1, 0)).toBe(0);
+  });
+  it('schema needs both amounts, a currency and the provider', () => {
+    const ok = { fundedOn: '2026-11-12', amountNgn: 1_050_000_00, sourceAmount: 1_000_00, sourceCurrency: 'CAD', provider: 'Wise' };
+    expect(payoutFundingSchema.safeParse(ok).success).toBe(true);
+    expect(payoutFundingSchema.safeParse({ ...ok, sourceCurrency: 'NGN' }).success).toBe(false);
+    expect(payoutFundingSchema.safeParse({ ...ok, amountNgn: 0 }).success).toBe(false);
+    expect(payoutFundingSchema.safeParse({ ...ok, fundedOn: '12/11/2026' }).success).toBe(false);
+  });
+  it('reconciliation needs a valid month', () => {
+    expect(payoutReconciliationSchema.safeParse({ month: '2026-11', bankOutflowNgn: 0 }).success).toBe(true);
+    expect(payoutReconciliationSchema.safeParse({ month: '2026-13', bankOutflowNgn: 0 }).success).toBe(false);
+  });
+});
