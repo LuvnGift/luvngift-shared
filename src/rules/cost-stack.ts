@@ -4,16 +4,20 @@ import { PRICED_CURRENCIES, costInCents, type PricedCurrency, type PricingRates,
  * Cost-stack pricing, as pure arithmetic — no I/O, so every published price
  * can be recomputed by hand.
  *
- *   partner cost (₦) = goods + agent fee + delivery fee
- *   deductions (%)   = platform share + FX buffer + the dearest card fee
- *   price (US$)      = partner cost ÷ ₦-per-US$ ÷ (1 − deductions)
- *   price (CAD/GBP)  = price (US$) × rate
+ *   partner payout (₦) = goods + fulfilment fee       (one partner, one line)
+ *   cost (₦)           = partner payout + packaging    (packaging is our cost)
+ *   deductions (%)     = platform share + FX buffer + the dearest card fee
+ *   price (US$)        = cost ÷ ₦-per-US$ ÷ (1 − deductions)
+ *   price (CAD/GBP)    = price (US$) × rate
  *
- * Partners are owed fixed naira (each role's line on the order), so the
- * platform's share is what is left of the price once card fees and the partner
- * cost are paid. Pricing against the dearest card fee keeps the platform share
- * at least `platformBps` in every currency; the FX buffer is headroom for the
- * naira strengthening while a published price is fixed.
+ * One fulfilment partner per order is owed fixed naira (the order's line), so
+ * the platform's share is what is left of the price once card fees, the
+ * partner and the packaging are paid. Pricing against the dearest card fee
+ * keeps the platform share at least `platformBps` in every currency; the FX
+ * buffer is headroom for the naira strengthening while a published price is
+ * fixed. The fulfilment fee depends on the recipient's state band
+ * (fulfilment-bands.ts): a published price is built on the PRICING band
+ * (HIGH), so it covers every state.
  *
  * The customer sees ONE all-in price. These parts are admin-only: an itemised
  * fee to a Canadian buyer would likely be taxable (see CLAUDE.md "Tax").
@@ -21,14 +25,13 @@ import { PRICED_CURRENCIES, costInCents, type PricedCurrency, type PricingRates,
  * Amounts are integers in the smallest unit (kobo, cents, pence).
  */
 
-
 export interface CostStack {
   /** What the goods cost to buy in Nigeria, in kobo. */
   goodsNgn: number;
-  /** The agent's fee per order, in kobo. */
-  agentFeeNgn: number;
-  /** The delivery partner's fee per order, in kobo. */
-  deliveryFeeNgn: number;
+  /** The fulfilment partner's fee per order (packing and delivery), in kobo. */
+  fulfilmentFeeNgn: number;
+  /** The Luvngift-branded packaging, in kobo. Our cost: never paid to the partner. */
+  packagingNgn: number;
 }
 
 export interface StackRules {
@@ -42,8 +45,14 @@ export interface StackRules {
  */
 export const MAX_DEDUCTION_PERCENT = 80;
 
-export function partnerCostNgn(stack: CostStack): number {
-  return stack.goodsNgn + stack.agentFeeNgn + stack.deliveryFeeNgn;
+/** What the fulfilment partner is owed for one order: goods + fee. */
+export function partnerPayoutNgn(stack: Pick<CostStack, 'goodsNgn' | 'fulfilmentFeeNgn'>): number {
+  return stack.goodsNgn + stack.fulfilmentFeeNgn;
+}
+
+/** Everything the price must cover before deductions. */
+export function stackCostNgn(stack: CostStack): number {
+  return partnerPayoutNgn(stack) + stack.packagingNgn;
 }
 
 export function deductionPercent(platformBps: number, rules: StackRules): number {
@@ -59,9 +68,9 @@ export function publishStackPrices(
 ): PublishedPrices {
   const deduction = deductionPercent(platformBps, rules);
   if (deduction >= MAX_DEDUCTION_PERCENT) {
-    throw new RangeError(`Deductions of ${deduction}% leave too little for the partners`);
+    throw new RangeError(`Deductions of ${deduction}% leave too little for the partner`);
   }
-  const costUsdCents = costInCents(partnerCostNgn(stack), rates, 'USD');
+  const costUsdCents = costInCents(stackCostNgn(stack), rates, 'USD');
   const usdCents = Math.ceil(costUsdCents / (1 - deduction / 100));
   return {
     costUsdCents,
@@ -78,11 +87,11 @@ export interface StackSplit {
   amount: number;
   /** Estimated card + conversion fees. The platform pays them. */
   cardFees: number;
-  /** Each role's naira line in this currency at `rates`, rounded up. */
+  /** Each naira line in this currency at `rates`, rounded up. */
   goods: number;
-  agent: number;
-  delivery: number;
-  /** What the platform keeps. Negative = the charge no longer covers the partners. */
+  fulfilmentFee: number;
+  packaging: number;
+  /** What the platform keeps. Negative = the charge no longer covers the costs. */
   platform: number;
   /** `platform` as basis points of the charge. */
   platformBps: number;
@@ -99,9 +108,9 @@ export function stackSplit(
   const inCurrency = (ngn: number) => Math.ceil(costInCents(ngn, rates, currency));
   const cardFees = Math.ceil((amount * cardFeePercent) / 100);
   const goods = inCurrency(stack.goodsNgn);
-  const agent = inCurrency(stack.agentFeeNgn);
-  const delivery = inCurrency(stack.deliveryFeeNgn);
-  const platform = amount - cardFees - goods - agent - delivery;
+  const fulfilmentFee = inCurrency(stack.fulfilmentFeeNgn);
+  const packaging = inCurrency(stack.packagingNgn);
+  const platform = amount - cardFees - goods - fulfilmentFee - packaging;
   const platformBps = amount > 0 ? Math.round((platform / amount) * 10_000) : 0;
-  return { amount, cardFees, goods, agent, delivery, platform, platformBps };
+  return { amount, cardFees, goods, fulfilmentFee, packaging, platform, platformBps };
 }
