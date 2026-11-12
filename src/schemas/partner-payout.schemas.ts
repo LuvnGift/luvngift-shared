@@ -76,3 +76,66 @@ export const payoutEventListSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+// ─── Batches (phase 2) ───────────────────────────────────────────────────────
+
+/** An adjustment's reason is read by the partner on their statement, so it must say something. */
+export const ADJUSTMENT_REASON_MIN = 10;
+/** ₦5,000,000 either way: a typo of an extra zero or two is refused, not paid. */
+export const ADJUSTMENT_MAX_KOBO = 5_000_000_00;
+
+/**
+ * `POST /admin/payout-batches`: reserves every payout and adjustment due to
+ * the chosen partners and creates one transfer per partner. The admin picks
+ * partners from the preview (`GET /admin/payout-batches/preview`).
+ */
+export const createPayoutBatchSchema = z.object({
+  vendorIds: z.array(z.string().cuid()).min(1, 'Choose at least one partner to pay').max(200),
+  note: z.string().trim().max(PAYOUT_NOTE_MAX).optional(),
+  totpCode: totpCodeSchema,
+});
+export type CreatePayoutBatchInput = z.infer<typeof createPayoutBatchSchema>;
+
+/** `POST /admin/payout-transfers/:id/paid` (multipart, `proof` image): same fields as one payout. */
+export const transferPaidSchema = payoutPaidSchema;
+export type TransferPaidInput = PayoutPaidInput;
+
+/** `POST /admin/payout-transfers/:id/failed`: not sent, bounced or reversed. Its items fall due again. */
+export const transferFailedSchema = z.object({
+  reason: z.string().trim().min(PAYOUT_REASON_MIN, 'Say what happened to the transfer').max(PAYOUT_NOTE_MAX),
+  totpCode: totpCodeSchema,
+});
+export type TransferFailedInput = z.infer<typeof transferFailedSchema>;
+
+/**
+ * `POST /admin/partners/:id/adjustments`. Positive = we owe the partner more
+ * (e.g. we underpaid); negative = they owe us (e.g. we overpaid, or a closed
+ * order was already paid). The next batch nets it off.
+ */
+export const partnerAdjustmentSchema = z.object({
+  amountNgn: z
+    .number()
+    .int('Amount must be in whole kobo')
+    .refine((v) => v !== 0, 'An adjustment cannot be zero')
+    .refine((v) => Math.abs(v) <= ADJUSTMENT_MAX_KOBO, 'An adjustment cannot be more than ₦5,000,000'),
+  reason: z.string().trim().min(ADJUSTMENT_REASON_MIN, 'Say why, in words the partner will understand').max(PAYOUT_NOTE_MAX),
+  orderId: z.string().cuid().optional(),
+  totpCode: totpCodeSchema,
+});
+export type PartnerAdjustmentInput = z.infer<typeof partnerAdjustmentSchema>;
+
+/** `POST /admin/partner-adjustments/:id/cancel`. */
+export const adjustmentCancelSchema = payoutCancelSchema;
+
+export const payoutBatchListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['OPEN', 'CLOSED']).optional(),
+});
+
+export const adjustmentListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(['DUE', 'BATCHED', 'PAID', 'CANCELLED']).optional(),
+  vendorId: z.string().cuid().optional(),
+});
