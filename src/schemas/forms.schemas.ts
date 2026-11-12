@@ -40,88 +40,75 @@ export const escalateChatSchema = z.object({
   email: z.string().trim().email('Enter a valid email address').max(254).optional(),
 });
 
-// ─── Partner (vendor / agent) application ────────────────────────────────────
+// ─── Fulfilment partner application ──────────────────────────────────────────
 
-export const FULFILMENT_ROLES = ['SOURCING', 'AGENT', 'DELIVERY'] as const;
+/**
+ * One kind of partner since 2026-11-11: an established hamper or gift business
+ * that sources, packs (in our branded boxes) and delivers in its state. The
+ * role and business-type enums keep their retired values in the database for
+ * history; nothing new is written with them.
+ */
+export const FULFILMENT_ROLES = ['FULFILMENT'] as const;
 export type FulfilmentRole = (typeof FULFILMENT_ROLES)[number];
 export const fulfilmentRoleSchema = z.enum(FULFILMENT_ROLES);
 
-export const PARTNER_BUSINESS_TYPES = ['RETAIL', 'DELIVERY', 'LOGISTICS', 'AGENT'] as const;
-/** How a partner is paid: legacy revenue share, or stated naira per role. */
+/** How a partner is paid: legacy revenue share, or stated naira per order. */
 export const PARTNER_PAY_TERMS = ['REVENUE_SHARE', 'FIXED_NAIRA'] as const;
 export type PartnerPayTerms = (typeof PARTNER_PAY_TERMS)[number];
-/** When a fixed-naira partner is paid (payout-rules in the API). */
-export const PAYOUT_MODES = ['ADVANCE', 'REIMBURSE', 'SPLIT'] as const;
-export type PayoutMode = (typeof PAYOUT_MODES)[number];
-/** The checks an admin records before approving a partner. */
-export const VETTING_KINDS = [
-  'ID_VERIFIED',
-  'GUARANTOR_CONFIRMED',
-  'REFERENCES_CHECKED',
-  'ADDRESS_VERIFIED',
-  'INTERVIEWED',
-  'TRAINED',
-] as const;
-export type VettingKind = (typeof VETTING_KINDS)[number];
-export const PARTNER_ID_TYPES = ['NIN', 'PASSPORT', 'DRIVERS_LICENCE', 'VOTERS_CARD'] as const;
-/** An AGENT gives this many references. */
-export const REQUIRED_REFERENCES = 2;
-/** An ID number as printed on the document. Only the last four characters are stored. */
-export const PARTNER_ID_NUMBER_RE = /^[A-Za-z0-9-]{6,20}$/;
-/** The ID photo or scan an AGENT uploads. */
-export const PARTNER_ID_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
-export const PARTNER_ID_DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'] as const;
-
-export const coverageEntrySchema = z.object({
-  state: z.string().trim().min(2).max(60),
-  role: fulfilmentRoleSchema,
-});
-
-
-export const partnerPersonSchema = z.object({
-  name: z.string().trim().min(2, 'Name is required').max(100),
-  phone: phoneSchema,
-  relationship: z.string().trim().min(2, 'Say how you know them').max(60),
-});
-
 /**
- * Public partner application: business and contact details, the accepted
- * Vendor Agreement, and for an AGENT the vetting details (ID, guarantor,
- * references, transport, the states and roles they would cover).
+ * When a fixed-naira partner is paid, set per partner on their profile:
+ * everything once delivery is proven, or a percent upfront and the rest then.
  */
-export const applyPartnerSchema = z
-  .object({
-    name: z.string().trim().min(2, 'Business name is required').max(100),
-    contactName: z.string().trim().min(2, 'Contact name is required').max(100),
-    email: z.string().trim().email('Invalid email address').toLowerCase(),
-    phone: phoneSchema,
-    address: z.string().trim().min(5, 'Business address is required').max(200),
-    state: z.string().trim().min(2, 'State is required').max(100),
-    businessType: z.enum(PARTNER_BUSINESS_TYPES),
-    notes: z.string().trim().max(1000).optional(),
-    idType: z.enum(PARTNER_ID_TYPES).optional(),
-    /** Only the last four characters are stored. */
-    idNumber: z.string().trim().regex(PARTNER_ID_NUMBER_RE, 'Enter the ID number as printed').optional(),
-    guarantor: partnerPersonSchema.optional(),
-    references: z.array(partnerPersonSchema).max(REQUIRED_REFERENCES).optional(),
-    transport: z.string().trim().min(2).max(100).optional(),
-    // 37 states × 3 roles fits.
-    coverage: z.array(coverageEntrySchema).max(120).optional(),
-    agreedToTerms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Vendor Agreement' }) }),
-    // Honeypot — real users leave this empty.
-    companyWebsite: z.string().max(200).optional(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.businessType !== 'AGENT') return;
-    const need = (ok: unknown, path: string, message: string) => {
-      if (!ok) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
-    };
-    need(v.idType && v.idNumber, 'idNumber', 'Your ID type and number are required');
-    need(v.guarantor, 'guarantor', 'A guarantor is required');
-    need(v.references?.length === REQUIRED_REFERENCES, 'references', `${REQUIRED_REFERENCES} references are required`);
-    need(v.transport, 'transport', 'Tell us how you get around');
-    need(v.coverage?.length, 'coverage', 'Choose at least one state and role you can cover');
-  });
+export const PAYOUT_MODES = ['ON_DELIVERY', 'SPLIT'] as const;
+export type PayoutMode = (typeof PAYOUT_MODES)[number];
+export const PAYOUT_MODE_LABELS: Record<PayoutMode, string> = {
+  ON_DELIVERY: 'Paid in full on delivery',
+  SPLIT: 'Part upfront, the rest on delivery',
+};
+
+/** The checks an admin records before approving a partner. */
+export const VETTING_KINDS = ['ADDRESS_VERIFIED', 'INTERVIEWED', 'SAMPLE_APPROVED', 'CAC_VERIFIED'] as const;
+export type VettingKind = (typeof VETTING_KINDS)[number];
+/** Must all have PASSED before approval. CAC registration is recorded when there is one. */
+export const REQUIRED_VETTING_KINDS: readonly VettingKind[] = ['ADDRESS_VERIFIED', 'INTERVIEWED', 'SAMPLE_APPROVED'];
+export const VETTING_LABELS: Record<VettingKind, string> = {
+  ADDRESS_VERIFIED: 'Address verified',
+  INTERVIEWED: 'Interviewed',
+  SAMPLE_APPROVED: 'Sample hamper approved',
+  CAC_VERIFIED: 'CAC registration checked',
+};
+
+/** The states a partner covers. 37 = every state + FCT. */
+export const PARTNER_COVERAGE_MAX = 37;
+const stateList = z.array(z.string().trim().min(2).max(60)).max(PARTNER_COVERAGE_MAX);
+const eachStateOnce = (v: string[]) => new Set(v.map((s) => s.toLowerCase())).size === v.length;
+export const coverageStatesSchema = stateList.refine(eachStateOnce, 'Each state once');
+
+/** Public partner application: business and contact details, coverage, the accepted Vendor Agreement. */
+export const applyPartnerSchema = z.object({
+  name: z.string().trim().min(2, 'Business name is required').max(100),
+  contactName: z.string().trim().min(2, 'Contact name is required').max(100),
+  email: z.string().trim().email('Invalid email address').toLowerCase(),
+  phone: phoneSchema,
+  address: z.string().trim().min(5, 'Business address is required').max(200),
+  state: z.string().trim().min(2, 'State is required').max(100),
+  /** CAC registration number, when the business has one. */
+  cacNumber: z.string().trim().regex(/^(RC|BN|IT)?\s?\d{4,10}$/i, 'Enter the CAC number as printed, e.g. RC123456').optional(),
+  /** Where people can see their hampers (Instagram, website). */
+  // http(s) only: it is shown to admin as a link, and url() alone accepts javascript:.
+  portfolioUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .url('Enter a full link, starting https://')
+    .refine((v) => /^https?:\/\//i.test(v), 'Enter a full link, starting https://')
+    .optional(),
+  notes: z.string().trim().max(1000).optional(),
+  coverage: stateList.min(1, 'Choose at least one state you deliver to').refine(eachStateOnce, 'Each state once'),
+  agreedToTerms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Vendor Agreement' }) }),
+  // Honeypot — real users leave this empty.
+  companyWebsite: z.string().max(200).optional(),
+});
 export type ApplyPartnerInput = z.infer<typeof applyPartnerSchema>;
 
 // ─── Careers and roadmap ─────────────────────────────────────────────────────

@@ -4,7 +4,8 @@ import { ITEM_CATEGORY_ICONS } from '../rules/aisles';
 import { offeredIntervalSchema, updateSubscriptionItemsSchema } from './subscription.schemas';
 import { createBundleSchema } from './bundle.schemas';
 import { phoneSchema } from './order.schemas';
-import { PARTNER_BUSINESS_TYPES } from './forms.schemas';
+import { FULFILMENT_BANDS, bandFeeProblem } from '../rules/fulfilment-bands';
+import { NIGERIAN_STATES } from '../constants';
 
 /**
  * The admin dashboard's wire contract with the API. The API validates every
@@ -35,12 +36,14 @@ export const ADMIN_REASON_MIN = 10;
 export const ADMIN_REASON_MAX = 500;
 const reason = (message: string) => z.string().trim().min(ADMIN_REASON_MIN, message).max(ADMIN_REASON_MAX);
 
-/** The fees and platform share. The goods amount is named per caller. */
+/**
+ * What admin enters per bundle or plan. The goods amount is named per caller;
+ * the fulfilment fee is NOT entered here: it is the HIGH band fee from
+ * Settings → Fulfilment, so every price covers every state.
+ */
 export const costStackSchema = z.object({
-  /** Agent's fee per order, in kobo. */
-  agentFeeNgn: koboSchema,
-  /** Delivery partner's fee per order, in kobo. */
-  deliveryFeeNgn: koboSchema,
+  /** The branded packaging for one order, in kobo. */
+  packagingNgn: koboSchema,
   /** The platform's share of the price. */
   platformPercent: percentSchema(PLATFORM_PERCENT_MAX),
 });
@@ -237,10 +240,20 @@ export const subscriptionRulesSchema = z.object({
   annualCancellationFeePercent: z.number().min(0).max(25).optional(),
 });
 
-/** Admin → Settings → Fulfilment: the cost-stack defaults and the FX buffer. */
+const bandFeesSchema = z.object({ HIGH: koboSchema, MEDIUM: koboSchema, LOW: koboSchema });
+
+/**
+ * Admin → Settings → Fulfilment: the fee per state band, which state is in
+ * which band, the cost-stack defaults and the FX buffer.
+ */
 export const fulfilmentRulesSchema = z.object({
-  defaultAgentFeeNgn: koboSchema,
-  defaultDeliveryFeeNgn: koboSchema,
+  bandFeesNgn: bandFeesSchema.superRefine((fees, ctx) => {
+    const problem = bandFeeProblem(fees);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem });
+  }),
+  /** Only states in NIGERIAN_STATES; one left out counts as HIGH. */
+  stateBands: z.record(z.enum(NIGERIAN_STATES), z.enum(FULFILMENT_BANDS)),
+  defaultPackagingNgn: koboSchema,
   defaultPlatformPercent: z.number().min(0).max(PLATFORM_PERCENT_MAX),
   fxBufferPercent: z.number().min(0).max(30),
   defaultSplitPercent: z.number().int().min(0).max(100),
@@ -299,7 +312,6 @@ export const createVendorSchema = z.object({
   phone: phoneSchema,
   address: z.string().trim().min(5, 'Address is required').max(200),
   state: z.string().trim().min(2, 'State is required').max(100),
-  businessType: z.enum(PARTNER_BUSINESS_TYPES),
   notes: z.string().trim().max(500).optional(),
 });
 export const updateVendorSchema = createVendorSchema.partial();
