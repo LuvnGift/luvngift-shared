@@ -22,6 +22,25 @@ export function isBankAccountPayable(account: { status: string } | null | undefi
   return account?.status === 'VERIFIED';
 }
 
+/**
+ * Where a one-time bank-details link stands. Finished states win over expiry:
+ * a link used on its last day reads USED, not EXPIRED.
+ */
+export function bankLinkStatus(
+  link: {
+    sentAt: Date | string | null;
+    usedAt: Date | string | null;
+    cancelledAt: Date | string | null;
+    expiresAt: Date | string;
+  },
+  now: Date = new Date(),
+): 'SENDING' | 'OPEN' | 'USED' | 'EXPIRED' | 'CANCELLED' {
+  if (link.usedAt) return 'USED';
+  if (link.cancelledAt) return 'CANCELLED';
+  if (new Date(link.expiresAt).getTime() <= now.getTime()) return 'EXPIRED';
+  return link.sentAt ? 'OPEN' : 'SENDING';
+}
+
 // ─── Batch planning (phase 2) ────────────────────────────────────────────────
 
 export interface BatchItem {

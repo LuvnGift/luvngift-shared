@@ -4,6 +4,7 @@ import { ITEM_CATEGORY_ICONS } from '../rules/aisles';
 import { offeredIntervalSchema, updateSubscriptionItemsSchema } from './subscription.schemas';
 import { createBundleSchema } from './bundle.schemas';
 import { phoneSchema } from './order.schemas';
+import { totpCodeSchema } from './partner-payout.schemas';
 import { FULFILMENT_BANDS, bandFeeProblem } from '../rules/fulfilment-bands';
 import { NIGERIAN_STATES } from '../constants';
 
@@ -313,7 +314,13 @@ export const createVendorSchema = z.object({
   state: z.string().trim().min(2, 'State is required').max(100),
   notes: z.string().trim().max(500).optional(),
 });
-export const updateVendorSchema = createVendorSchema.partial();
+/**
+ * An edit. Changing the email or phone (`partnerContactChanges`) needs a fresh
+ * 2FA code: links to set where a partner is paid go to those contacts.
+ */
+export const updateVendorSchema = createVendorSchema.partial().extend({
+  totpCode: totpCodeSchema.optional(),
+});
 export const setVendorActiveSchema = z.object({
   isActive: z.boolean(),
   reason: z.string().trim().min(1).max(500).optional(),

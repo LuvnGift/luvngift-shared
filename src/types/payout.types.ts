@@ -17,7 +17,10 @@ export interface PartnerBankAccountView {
   verificationNote: string | null;
   verifiedAt: string | null;
   verifiedByEmail: string | null;
-  createdByEmail: string;
+  /** The admin who typed the details; null when the partner submitted them through their link. */
+  createdByEmail: string | null;
+  /** Set when the partner submitted these details through a one-time link. */
+  bankLinkId: string | null;
   supersededAt: string | null;
   createdAt: string;
 }
@@ -39,7 +42,10 @@ export type PayoutEventKind =
   | 'TRANSFER_CREATED'
   | 'TRANSFER_PAID'
   | 'TRANSFER_FAILED'
-  | 'BATCH_EXPORTED';
+  | 'BATCH_EXPORTED'
+  | 'BANK_LINK_ISSUED'
+  | 'BANK_LINK_USED'
+  | 'BANK_LINK_CANCELLED';
 
 /** One row of the append-only partner money trail. */
 export interface PayoutEventView {
@@ -56,10 +62,54 @@ export interface PayoutEventView {
   reference: string | null;
   proofUrl: string | null;
   note: string | null;
-  /** null = the system (an order delivered, reassigned or closed). */
+  /**
+   * null = the system (an order delivered, reassigned or closed). For details
+   * the partner submitted through their link, this is the partner's email.
+   */
   actorEmail: string | null;
   requestId: string | null;
   createdAt: string;
+}
+
+// ─── One-time bank-details links ─────────────────────────────────────────────
+
+/** FIRST: the partner has no bank details yet. CHANGE: they are replacing them. */
+export type PartnerBankLinkPurpose = 'FIRST' | 'CHANGE';
+
+/**
+ * SENDING: issued, not yet delivered by email or SMS (or delivery failed).
+ * OPEN: delivered and usable. USED, EXPIRED, CANCELLED: finished.
+ */
+export type PartnerBankLinkStatus = 'SENDING' | 'OPEN' | 'USED' | 'EXPIRED' | 'CANCELLED';
+
+/** A link as admin sees it on the partner profile. Never carries the URL. */
+export interface PartnerBankLinkView {
+  id: string;
+  status: PartnerBankLinkStatus;
+  purpose: PartnerBankLinkPurpose;
+  reason: string;
+  /** null = sent automatically when the partner was approved. */
+  issuedByEmail: string | null;
+  createdAt: string;
+  expiresAt: string;
+  sentAt: string | null;
+  openedAt: string | null;
+  usedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+}
+
+/** What the partner's link page shows before they type anything. Nothing on file is revealed. */
+export interface PartnerBankLinkPublicView {
+  partnerName: string;
+  isChange: boolean;
+  expiresAt: string;
+}
+
+/** The partner's confirmation after submitting: what they just typed, masked. */
+export interface PartnerBankLinkSubmitResult {
+  bankName: string;
+  accountLast4: string;
 }
 
 // ─── Batches (phase 2) ───────────────────────────────────────────────────────

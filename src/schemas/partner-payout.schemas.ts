@@ -26,17 +26,22 @@ export const PAYOUT_REFERENCE_MIN = 3;
 export const PAYOUT_NOTE_MAX = 500;
 export const PAYOUT_REASON_MIN = 5;
 
-/**
- * `PUT /admin/partners/:id/bank-account`. Saving new details supersedes the
- * current account; the new one cannot be paid until it is verified.
- */
-export const partnerBankAccountSchema = z.object({
+/** The bank details themselves, as admin or the partner types them. */
+export const partnerBankDetailsSchema = z.object({
   bankName: z.string().trim().min(2, 'Enter the bank name').max(80),
   accountNumber: z
     .string()
     .trim()
     .regex(new RegExp(`^\\d{${NUBAN_LENGTH}}$`), `Account number must be ${NUBAN_LENGTH} digits`),
   accountName: z.string().trim().min(2, 'Enter the account name exactly as the bank shows it').max(120),
+});
+export type PartnerBankDetailsInput = z.infer<typeof partnerBankDetailsSchema>;
+
+/**
+ * `PUT /admin/partners/:id/bank-account`. Saving new details supersedes the
+ * current account; the new one cannot be paid until it is verified.
+ */
+export const partnerBankAccountSchema = partnerBankDetailsSchema.extend({
   totpCode: totpCodeSchema,
 });
 export type PartnerBankAccountInput = z.infer<typeof partnerBankAccountSchema>;
@@ -52,6 +57,50 @@ export const verifyPartnerBankAccountSchema = z.object({
   totpCode: totpCodeSchema,
 });
 export type VerifyPartnerBankAccountInput = z.infer<typeof verifyPartnerBankAccountSchema>;
+
+// ─── One-time bank-details links ─────────────────────────────────────────────
+
+/**
+ * A partner adds (or changes) their own bank details through a one-time link
+ * sent to the email and phone we vetted. There is no partner login, so the
+ * link is the only way in: single use, short-lived, and what it submits is
+ * unpayable until admin verifies the account name, exactly as if admin had
+ * typed it.
+ */
+export const BANK_LINK_TTL_DAYS = 7;
+
+/**
+ * `POST /admin/partners/:id/bank-link`. A link for a CHANGE should only be sent
+ * after calling the partner back on the number on file, so the reason records
+ * how the request was confirmed.
+ */
+export const issuePartnerBankLinkSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(PAYOUT_REASON_MIN, 'Say why (e.g. called the partner back on the number on file)')
+    .max(PAYOUT_NOTE_MAX),
+  totpCode: totpCodeSchema,
+});
+export type IssuePartnerBankLinkInput = z.infer<typeof issuePartnerBankLinkSchema>;
+
+/** `POST /admin/partners/:id/bank-link/cancel`: withdraw a link that has not been used. */
+export const cancelPartnerBankLinkSchema = z.object({
+  reason: z.string().trim().min(PAYOUT_REASON_MIN, 'Say why the link is withdrawn').max(PAYOUT_NOTE_MAX),
+});
+export type CancelPartnerBankLinkInput = z.infer<typeof cancelPartnerBankLinkSchema>;
+
+/**
+ * `POST /vendor-portal/bank-details/:token`: the partner's form. The account
+ * number is typed twice, because one wrong digit pays a stranger.
+ */
+export const partnerBankLinkSubmitSchema = partnerBankDetailsSchema
+  .extend({ confirmAccountNumber: z.string().trim() })
+  .refine((v) => v.accountNumber === v.confirmAccountNumber, {
+    message: 'The two account numbers do not match',
+    path: ['confirmAccountNumber'],
+  });
+export type PartnerBankLinkSubmitInput = z.infer<typeof partnerBankLinkSubmitSchema>;
 
 /**
  * `POST /admin/partner-payouts/:id/paid`, sent as multipart with an optional
