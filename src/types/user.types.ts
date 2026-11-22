@@ -1,4 +1,4 @@
-import { Currency, UserRole } from './common.types';
+import { Currency, StaffPermission, UserRole } from './common.types';
 
 export interface User {
   id: string;
@@ -8,6 +8,10 @@ export interface User {
   lastName?: string;
   dateOfBirth?: Date;
   role: UserRole;
+  /** Empty unless `role` is STAFF. */
+  staffPermissions?: StaffPermission[];
+  /** Job title shown on the ops dashboard, e.g. "Country Brand Manager". */
+  staffTitle?: string | null;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
   profilePicture?: string;

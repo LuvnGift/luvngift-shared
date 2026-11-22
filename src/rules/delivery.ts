@@ -26,3 +26,39 @@ export function formatDeliveryDates(from: string | Date, windowDays: number): st
   const startLabel = start.toLocaleDateString('en-GB', sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'long' });
   return `${startLabel}–${endLabel}`;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface DeliveryDueInput {
+  /** When the order was paid or created (the promise runs from here). */
+  placedAt: string | Date;
+  /** The buyer's chosen date, when there is one. It replaces the window. */
+  preferredDeliveryDate?: string | Date | null;
+  leadDays: number;
+  windowDays: number;
+}
+
+/**
+ * The last day a delivery was promised for: the buyer's chosen date, else the
+ * end of the window (placed + lead + window). End of that day, so an order
+ * due "today" is not overdue until tomorrow.
+ */
+export function deliveryDueBy(input: DeliveryDueInput): Date | null {
+  const chosen = input.preferredDeliveryDate ? new Date(input.preferredDeliveryDate) : null;
+  const base = chosen && !Number.isNaN(chosen.getTime()) ? chosen : null;
+  let due: Date;
+  if (base) {
+    due = new Date(base);
+  } else {
+    const placed = new Date(input.placedAt);
+    if (Number.isNaN(placed.getTime())) return null;
+    const days = Math.max(0, input.leadDays) + Math.max(0, input.windowDays);
+    due = new Date(placed.getTime() + days * DAY_MS);
+  }
+  due.setUTCHours(23, 59, 59, 999);
+  return due;
+}
+
+export function isDeliveryOverdue(dueBy: Date | null, now: Date = new Date()): boolean {
+  return dueBy !== null && now.getTime() > dueBy.getTime();
+}

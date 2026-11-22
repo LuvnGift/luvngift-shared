@@ -21,3 +21,4 @@ export * from './cost-stack';
 export * from './fulfilment-bands';
 export * from './payouts';
 export * from './partner-contact';
+export * from './staff';
