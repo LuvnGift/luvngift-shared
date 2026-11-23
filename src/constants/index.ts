@@ -66,6 +66,9 @@ export const CACHE_TAGS = {
   job: (slug: string) => `job:${slug}`,
   roadmap: 'roadmap',
   subscriptionPlans: 'subscription-plans',
+  // The public review lists (home page strip, /reviews). Bundle ratings ride on
+  // the bundle payload, so a moderation change also purges bundles + occasions.
+  reviews: 'reviews',
 } as const;
 
 /**
