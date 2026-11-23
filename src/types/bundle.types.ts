@@ -1,4 +1,5 @@
 import { Currency } from './common.types';
+import type { ReviewRatingSummary } from '../rules/reviews';
 
 export interface BundleItem {
   id: string;
@@ -23,6 +24,11 @@ export interface Bundle {
   // SEO content (optional) — rich copy rendered on the public bundle page.
   seoBody?: string | null;
   faqs?: Faq[] | null;
+  /**
+   * Approved customer reviews, embedded by the API on public bundle reads so
+   * prerendered pages need no extra fetch. Null until one is approved.
+   */
+  rating?: ReviewRatingSummary | null;
   createdAt: Date;
   updatedAt: Date;
 }
