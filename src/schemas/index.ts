@@ -9,3 +9,4 @@ export * from './admin.schemas';
 export * from './forms.schemas';
 export * from './partner-payout.schemas';
 export * from './review.schemas';
+export * from './marketing.schemas';

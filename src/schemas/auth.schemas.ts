@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MARKETING_CONSENT_SOURCES } from '../rules/marketing';
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 
@@ -75,6 +76,10 @@ export const registerSchema = z.object({
   password: passwordSchema,
   phone: phoneField.optional(),
   dateOfBirth: dobField,
+  /** The unticked "email me gift ideas" box. Absent = no. Never pre-ticked. */
+  marketingOptIn: z.boolean().optional(),
+  /** Which form it was ticked on, stored with the consent record. */
+  marketingConsentSource: z.enum(MARKETING_CONSENT_SOURCES).optional(),
 });
 
 export const loginSchema = z.object({

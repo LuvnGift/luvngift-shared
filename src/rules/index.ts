@@ -22,3 +22,4 @@ export * from './fulfilment-bands';
 export * from './payouts';
 export * from './partner-contact';
 export * from './reviews';
+export * from './marketing';

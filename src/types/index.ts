@@ -9,3 +9,4 @@ export * from './custom-order.types';
 export * from './pricing.types';
 export * from './payout.types';
 export * from './review.types';
+export * from './marketing.types';
