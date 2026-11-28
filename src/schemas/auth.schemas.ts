@@ -113,7 +113,20 @@ export const changePasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+/**
+ * POST /auth/oauth/exchange: the web swaps the one-time Google sign-in code
+ * for a session. `marketingOptIn` is the box the person ticked above
+ * "Continue with Google". It travels here, not through the Google redirect,
+ * because only our own page can send this request, so a crafted link can
+ * never sign someone up who did not tick it.
+ */
+export const oauthExchangeSchema = z.object({
+  code: z.string().min(1),
+  marketingOptIn: z.boolean().optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type OAuthExchangeInput = z.infer<typeof oauthExchangeSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

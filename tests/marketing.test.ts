@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MARKETING_CONSENT_TEXT,
   adminMarketingIssueSchema,
   isMarketingOptedIn,
   isMarketingWeekOf,
   marketingPreferenceSchema,
   marketingWeekOf,
+  oauthExchangeSchema,
   registerSchema,
 } from '../src';
 
@@ -61,5 +63,20 @@ describe('marketing schemas', () => {
       dateOfBirth: '1990-01-01',
     });
     expect(parsed.marketingOptIn).toBeUndefined();
+  });
+});
+
+describe('MARKETING_CONSENT_TEXT', () => {
+  it('names who will email and says how to stop (CASL)', () => {
+    expect(MARKETING_CONSENT_TEXT).toContain('Luvngift');
+    expect(MARKETING_CONSENT_TEXT.toLowerCase()).toContain('unsubscribe');
+  });
+});
+
+describe('oauthExchangeSchema', () => {
+  it('carries the Google sign-up box, off unless sent', () => {
+    expect(oauthExchangeSchema.parse({ code: 'c' }).marketingOptIn).toBeUndefined();
+    expect(oauthExchangeSchema.parse({ code: 'c', marketingOptIn: true }).marketingOptIn).toBe(true);
+    expect(marketingPreferenceSchema.safeParse({ optIn: true, source: 'signup_google' }).success).toBe(true);
   });
 });

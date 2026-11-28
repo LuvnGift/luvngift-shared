@@ -12,13 +12,23 @@
  * so we can prove what was agreed. Change the wording → bump the version.
  */
 export const MARKETING_CONSENT_TEXT =
-  'Email me gift ideas and new bundles, about once a week. I can unsubscribe at any time.';
-export const MARKETING_CONSENT_VERSION = '2026-11-26';
+  "I'd like to receive Luvngift's weekly email with new gift bundles and seasonal gift ideas. I can unsubscribe at any time.";
+/**
+ * The line shown above the box, saying what people get. Not part of what they
+ * agree to (that is MARKETING_CONSENT_TEXT), so changing it needs no version
+ * bump. Keep it truthful: no promises the email does not keep.
+ */
+export const MARKETING_OPT_IN_HEADLINE =
+  'Gift ideas for every occasion: birthdays, Mother’s Day, Christmas, Eid and more';
+/** 2026-11-26: first wording. 2026-11-28: reworded, names the sender (CASL). */
+export const MARKETING_CONSENT_VERSION = '2026-11-28';
 
 /** Where consent was given or withdrawn, stored with the consent record. */
 export const MARKETING_CONSENT_SOURCES = [
   'signup_web',
   'signup_mobile',
+  /** The box above "Continue with Google" on the web sign-up page. */
+  'signup_google',
   'prompt_web',
   'account_web',
   'account_mobile',

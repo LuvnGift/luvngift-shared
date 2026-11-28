@@ -48,3 +48,22 @@ export interface FunnelMetrics {
     paidAfterClick: number;
   };
 }
+
+/**
+ * GET /admin/marketing/policy-notice: the one-time "we've updated our Privacy
+ * Policy" email. A service notice, not marketing: it goes to every verified
+ * customer and must never ask for marketing consent.
+ */
+export interface PolicyNoticeStatus {
+  /** The policy version this notice announces. */
+  version: string;
+  /** Human date shown in the email, e.g. "26 November 2026". */
+  updatedOn: string;
+  /** Verified customers who should get it. */
+  eligible: number;
+  /** Of those, already sent this version. */
+  sent: number;
+  remaining: number;
+  /** A send is running in this API instance right now. */
+  running: boolean;
+}
