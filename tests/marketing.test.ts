@@ -64,6 +64,19 @@ describe('marketing schemas', () => {
     });
     expect(parsed.marketingOptIn).toBeUndefined();
   });
+
+  // Web sign-up no longer asks for a username; the API generates one.
+  it('accepts a sign-up without a username, but still validates one that is sent', () => {
+    const base = {
+      firstName: 'Ada',
+      lastName: 'Obi',
+      email: 'ada@example.com',
+      password: 'Passw0rdX',
+      dateOfBirth: '1990-01-01',
+    };
+    expect(registerSchema.safeParse(base).success).toBe(true);
+    expect(registerSchema.safeParse({ ...base, username: '1bad name' }).success).toBe(false);
+  });
 });
 
 describe('MARKETING_CONSENT_TEXT', () => {

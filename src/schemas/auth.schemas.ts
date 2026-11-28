@@ -63,6 +63,10 @@ const dobField = z
 export const registerSchema = z.object({
   firstName: nameField('First name'),
   lastName: nameField('Last name'),
+  /**
+   * Optional: when absent the API generates one from the name (web sign-up no
+   * longer asks for it). Still validated when a client sends one.
+   */
   username: z
     .string()
     .trim()
@@ -71,7 +75,8 @@ export const registerSchema = z.object({
     .regex(
       /^[a-zA-Z][a-zA-Z0-9_]*$/,
       'Username must start with a letter and can only contain letters, numbers, and underscores',
-    ),
+    )
+    .optional(),
   email: z.string().trim().email('Enter a valid email address'),
   password: passwordSchema,
   phone: phoneField.optional(),
